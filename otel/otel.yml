@@ -47,24 +47,6 @@ receivers:
                 service: 'grafana'
                 group: 'infrastructure'
 
-        # Scrape from the Mythical Server service.
-        - job_name: 'mythical-server'
-          scrape_interval: 2s
-          static_configs:
-            - targets: ['mythical-server:4000']
-              labels:
-                service: 'mythical-server'
-                group: 'mythical'
-
-        # Scrape from the Mythical Requester service.
-        - job_name: 'mythical-requester'
-          scrape_interval: 2s
-          static_configs:
-            - targets: ['mythical-requester:4001']
-              labels:
-                service: 'mythical-requester'
-                group: 'mythical'
-
 # Define processors to process received data.
 # See https://opentelemetry.io/docs/collector/configuration/#processors
 processors:

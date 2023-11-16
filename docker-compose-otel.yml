@@ -38,93 +38,25 @@ services:
     depends_on:
       - grafana
 
-  # A RabbitMQ queue used to send message between the requester and the server microservices.
-  mythical-queue:
-    image: rabbitmq:management
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: rabbitmq-diagnostics check_running
-      interval: 5s
-      timeout: 30s
-      retries: 10
-
-  # A postgres DB used to store data by the API server microservice.
-  mythical-database:
-    image: postgres:14.5
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: "mythical"
-    volumes:
-      - "postgres:/var/lib/postgresql/data"
-    ports:
-      - "5432:5432"
-
-  # A microservice that makes requests to the API server microservice. Requests are also pushed onto the mythical-queue.
-  mythical-requester:
-    build:
-      context: ./source
-      dockerfile: docker/Dockerfile
-      args:
-        SERVICE: mythical-beasts-requester
-    depends_on:
-      mythical-queue:
-        condition: service_healthy
-      mythical-server:
-        condition: service_started
-    ports:
-      - "4001:4001"
-    environment:
-      - NAMESPACE=production
-      - LOGS_TARGET=http://loki:3100/loki/api/v1/push
-      - TRACING_COLLECTOR_HOST=opentelemetry-collector
-      - TRACING_COLLECTOR_PORT=4317
-      - OTEL_EXPORTER_OTLP_TRACES_INSECURE=true
-      - OTEL_RESOURCE_ATTRIBUTES=ip=1.2.3.4
 
   # The API server microservice.
   # It writes logs directly to the Loki service, exposes metrics for the Prometheus
   # service and sends traces to the Grafana opentelemetry-collector instance.
-  mythical-server:
-    build:
-      context: ./source
-      dockerfile: docker/Dockerfile
-      args:
-        SERVICE: mythical-beasts-server
+  rest-api:
+    image: philipz/otel-logback:agent
     ports:
-      - "4000:4000"
-      - "80:80"
+      - "8080:8080"
     depends_on:
-      - mythical-database
+      - opentelemetry-collector
     environment:
-      - NAMESPACE=production
-      - LOGS_TARGET=http://loki:3100/loki/api/v1/push
-      - TRACING_COLLECTOR_HOST=opentelemetry-collector
-      - TRACING_COLLECTOR_PORT=4317
-      - OTEL_EXPORTER_OTLP_TRACES_INSECURE=true
-      - OTEL_RESOURCE_ATTRIBUTES=ip=1.2.3.5
-
-  # A microservice that consumes requests from the mythical-queue
-  mythical-recorder:
-    build:
-      context: ./source
-      dockerfile: docker/Dockerfile
-      args:
-        SERVICE: mythical-beasts-recorder
-    depends_on:
-      mythical-queue:
-        condition: service_healthy
-    ports:
-      - "4002:4002"
-    environment:
-      - NAMESPACE=production
-      - LOGS_TARGET=http://loki:3100/loki/api/v1/push
-      - TRACING_COLLECTOR_HOST=opentelemetry-collector
-      - TRACING_COLLECTOR_PORT=4317
-      - OTEL_EXPORTER_OTLP_TRACES_INSECURE=true
-      - OTEL_RESOURCE_ATTRIBUTES=ip=1.2.3.5
+      - OTEL_INSTRUMENTATION_RUNTIME_METRICS_ENABLED=true
+      - OTEL_INSTRUMENTATION_LOGBACK_APPENDER_ENABLED=true
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel-auto-instrumentation-java/javaagent.jar
+      - OTEL_SERVICE_NAME=rest-api
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://opentelemetry-collector:4317
+      - OTEL_PROPAGATORS=tracecontext,baggage,b3
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=0.25
 
   # The Tempo service stores traces send to it by Grafana opentelemetry-collector, and takes
   # queries from Grafana to visualise those traces.
@@ -154,23 +86,3 @@ services:
       - "9009:9009"
     volumes:
       - "./mimir/mimir.yaml:/etc/mimir.yaml"
-
-  k6:
-    image: grafana/k6
-    volumes:
-      - "./k6:/scripts"
-    environment:
-      - K6_PROMETHEUS_RW_SERVER_URL=http://mimir:9009/api/v1/push
-      - K6_DURATION=3600s
-      - K6_VUS=1
-      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
-    restart: always
-    command: ["run", "-o", "experimental-prometheus-rw", "/scripts/mythical-loadtest.js"]
-
-  pyroscope:
-    image: pyroscope/pyroscope:0.37.2
-    ports:
-      - "4040:4040"
-    volumes:
-      - "./pyroscope/pyroscope.yaml:/etc/pyroscope/server.yml"
-    command: ["server"]
