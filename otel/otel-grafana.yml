@@ -36,7 +36,7 @@ exporters:
       authenticator: basicauth/metrics
 
   loki:
-    endpoint: https://logs-prod-us-central1.grafana.net
+    endpoint: https://logs-prod-us-central1.grafana.net/loki/api/v1/push
     auth:
       authenticator: basicauth/logs
   logging:
@@ -45,6 +45,14 @@ exporters:
 processors:
   spanmetrics:
     metrics_exporter: prometheusremotewrite
+  resource:
+    attributes:
+      - action: insert
+        key: service_name
+        from_attribute: service.name 
+      - action: insert
+        key: loki.resource.labels
+        value: service_name
 
 service:
   extensions: [basicauth/otlp, basicauth/traces, basicauth/metrics, basicauth/logs]
@@ -59,5 +67,5 @@ service:
       exporters: [prometheusremotewrite]
     logs:
       receivers: [otlp]
-      processors: []
+      processors: [resource]
       exporters: [loki]

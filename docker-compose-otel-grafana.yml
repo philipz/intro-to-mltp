@@ -21,6 +21,7 @@ services:
       - JAVA_TOOL_OPTIONS=-javaagent:/otel-auto-instrumentation-java/javaagent.jar
       - OTEL_SERVICE_NAME=rest-api
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://opentelemetry-collector:4317
+      - OTEL_PROPAGATORS=tracecontext,baggage,b3
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.25
-      - OTEL_JAVAAGENT_LOGGING=simple
+      - OTEL_LOGS_EXPORTER=otlp

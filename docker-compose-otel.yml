@@ -55,7 +55,7 @@ services:
       - OTEL_PROPAGATORS=tracecontext,baggage,b3
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.25
-      - OTEL_JAVAAGENT_LOGGING=simple
+      - OTEL_LOGS_EXPORTER=otlp
 
   # The Tempo service stores traces send to it by Grafana opentelemetry-collector, and takes
   # queries from Grafana to visualise those traces.

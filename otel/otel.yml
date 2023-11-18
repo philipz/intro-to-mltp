@@ -53,7 +53,14 @@ processors:
   # Use the in-built `batch` processor to batch up data before writing it for export.
   # Use the default values for it.
   batch:
-
+  resource:
+    attributes:
+      - action: insert
+        key: service_name
+        from_attribute: service.name 
+      - action: insert
+        key: loki.resource.labels
+        value: service_name
   # The spanmetrics processor is used to output metrics based on received trace spans.
   #spanmetrics:
   #    # Defines which exporter the processor will write metrics to.
@@ -107,12 +114,6 @@ exporters:
 
 # Define the full service graph for the OpenTelemetry collector.
 service:
-  telemetry:
-    logs:
-      level: info
-      encoding: json
-      output_paths: ["stdout"]
-      error_output_paths: ["stdout"]
   # A pipeline can exist for each of the signals received.
   pipelines:
     # Define the trace pipeline.
@@ -137,5 +138,5 @@ service:
       exporters: [prometheusremotewrite]
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [loki,logging]
+      processors: [batch,resource]
+      exporters: [loki]
