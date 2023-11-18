@@ -85,6 +85,8 @@ processors:
 # See https://opentelemetry.io/docs/collector/configuration/#exporters
 # Also see https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor#recommended-processors
 exporters:
+  logging:
+    loglevel: debug
   # Exporter for sending trace data to Tempo.
   otlp/grafana:
     # Send to the locally running Tempo service.
@@ -100,9 +102,17 @@ exporters:
     # TLS is not enabled for the instance.
     tls:
       insecure: true
+  loki:
+    endpoint: "http://loki:3100/loki/api/v1/push"
 
 # Define the full service graph for the OpenTelemetry collector.
 service:
+  telemetry:
+    logs:
+      level: info
+      encoding: json
+      output_paths: ["stdout"]
+      error_output_paths: ["stdout"]
   # A pipeline can exist for each of the signals received.
   pipelines:
     # Define the trace pipeline.
@@ -125,3 +135,7 @@ service:
       processors: [batch]
       # Export to the `prometheusremtotewrite` exporter.
       exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [loki,logging]

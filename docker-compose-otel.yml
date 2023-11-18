@@ -1,7 +1,4 @@
 version: "2.1"
-volumes:
-  grafana:
-  postgres:
 services:
   # The opentelemetry-collector batches and processes traces sent to it.
   opentelemetry-collector:
@@ -10,6 +7,7 @@ services:
       - "12347:12345"
       - "12348:12348"
       - "6832:6832"
+      - "4317:4317"
       - "55679:55679"
     volumes:
       - ./otel/otel.yml:/etc/otel-collector-config.yml
@@ -29,7 +27,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
 
-  # This creates a writeable Tempo data source and a couple of correlations.
+# This creates a writeable Tempo data source and a couple of correlations.
   # NOTE: This relies on the Tempo data source not existing at first start, should you delete
   #       the Tempo data source and re-run this service (via a `docker compose up`), extra
   #       copies of correlations will be generated!
@@ -57,6 +55,7 @@ services:
       - OTEL_PROPAGATORS=tracecontext,baggage,b3
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.25
+      - OTEL_JAVAAGENT_LOGGING=simple
 
   # The Tempo service stores traces send to it by Grafana opentelemetry-collector, and takes
   # queries from Grafana to visualise those traces.
@@ -64,7 +63,6 @@ services:
     image: grafana/tempo:2.2.0
     ports:
       - "3200:3200"
-      - "4317:4317"
       - "55680:55680"
       - "55681:55681"
       - "14250:14250"
